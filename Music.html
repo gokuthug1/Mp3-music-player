@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Player</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #121212;
+      font-family: Arial, sans-serif;
+      color: #fff;
+    }
+    #player-container {
+      text-align: center;
+      background: #333;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      width: 90%;
+      max-width: 600px;
+    }
+    audio {
+      display: none; /* Hide default audio controls */
+    }
+    input[type="file"] {
+      display: none;
+    }
+    label {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #444;
+      border: 1px solid #555;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    label:hover {
+      background: #555;
+    }
+    .title {
+      margin-top: 10px;
+      font-size: 18px;
+    }
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    .controls button {
+      padding: 10px;
+      background: #444;
+      border: 1px solid #555;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+      color: #fff;
+    }
+    .controls button:hover {
+      background: #555;
+    }
+    #progress-container {
+      margin-top: 20px;
+      width: 100%;
+      background: #444;
+      border-radius: 5px;
+      cursor: pointer;
+      position: relative;
+    }
+    #progress {
+      width: 0;
+      height: 10px;
+      background: #1db954;
+      border-radius: 5px;
+    }
+    .time {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+    #playlist {
+      margin-top: 20px;
+      text-align: left;
+    }
+    #playlist li {
+      list-style: none;
+      padding: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    #playlist li:hover, #playlist li.active {
+      background: #555;
+    }
+  </style>
+</head>
+<body>
+  <div id="player-container">
+    <label for="audio-input" id="upload-label">Upload MP3</label>
+    <input type="file" accept="audio/*" id="audio-input" multiple onchange="loadAudioFiles()">
+    <div class="title" id="audio-title">No file selected</div>
+    <div id="progress-container" onclick="setProgress(event)">
+      <div id="progress"></div>
+    </div>
+    <div class="time">
+      <span id="current-time">0:00</span>
+      <span id="duration">0:00</span>
+    </div>
+    <div class="controls">
+      <button onclick="skipTime(-5)">&#9664;&#9664; 5s</button>
+      <button onclick="prevTrack()">&#9664;&#9664;</button>
+      <button onclick="playPause()">&#9654;/&#10074;&#10074;</button>
+      <button onclick="nextTrack()">&#9654;&#9654;</button>
+      <button onclick="skipTime(5)">5s &#9654;&#9654;</button>
+    </div>
+    <ul id="playlist"></ul>
+    <audio id="audio-player" ontimeupdate="updateProgress()" onloadedmetadata="updateDuration()" onended="nextTrack()"></audio>
+  </div>
+
+  <script>
+  let audioPlayer = document.getElementById('audio-player');
+  let isPlaying = false;
+  let currentTrackIndex = 0;
+  let playlist = [];
+
+  function loadAudioFiles() {
+    const input = document.getElementById('audio-input');
+    const files = input.files;
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type === 'audio/mp3' || file.type === 'audio/mpeg') {
+        playlist.push({ name: file.name.replace(/\.[^/.]+$/, ""), url: URL.createObjectURL(file) });
+      } else {
+        alert('Please upload a valid MP3 file.');
+        console.log('Invalid file type:', file.type); // Debug log
+        return;
+      }
+    }
+
+    if (playlist.length > 0) {
+      updatePlaylistUI();
+      const confirmation = prompt('Are you done adding songs? (yes/no)');
+      if (confirmation !== null) {
+        const response = confirmation.toLowerCase().trim();
+        if (response === 'yes' || response === 'yea') {
+          document.getElementById('upload-label').style.display = 'none'; // Hide upload button
+        }
+      }
+    }
+  }
+
+  function updatePlaylistUI() {
+    const playlistUI = document.getElementById('playlist');
+    playlistUI.innerHTML = '';
+
+    playlist.forEach((track, index) => {
+      const listItem = document.createElement('li');
+      listItem.textContent = track.name;
+      listItem.onclick = () => selectTrack(index);
+      if (index === currentTrackIndex) {
+        listItem.classList.add('active');
+      }
+      playlistUI.appendChild(listItem);
+    });
+  }
+
+  function selectTrack(index) {
+    currentTrackIndex = index;
+    loadTrack(index);
+    updatePlaylistUI();
+  }
+
+  function loadTrack(index) {
+    const title = document.getElementById('audio-title');
+    audioPlayer.src = playlist[index].url;
+    title.textContent = playlist[index].name;
+    audioPlayer.load();
+    play(); // Start playing the new track
+  }
+
+  function play() {
+    audioPlayer.play();
+    isPlaying = true;
+  }
+
+  function pause() {
+    audioPlayer.pause();
+    isPlaying = false;
+  }
+
+  function playPause() {
+    if (isPlaying) {
+      pause();
+    } else {
+      play();
+    }
+  }
+
+  function skipTime(seconds) {
+    audioPlayer.currentTime += seconds;
+  }
+
+  function prevTrack() {
+    if (currentTrackIndex > 0) {
+      currentTrackIndex--;
+      loadTrack(currentTrackIndex);
+      updatePlaylistUI();
+    }
+  }
+
+  function nextTrack() {
+    if (currentTrackIndex < playlist.length - 1) {
+      currentTrackIndex++;
+      loadTrack(currentTrackIndex);
+      updatePlaylistUI();
+    }
+  }
+
+  function updateProgress() {
+    const progress = document.getElementById('progress');
+    const currentTime = document.getElementById('current-time');
+    const percentage = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+    progress.style.width = `${percentage}%`;
+
+    // Update current time display
+    currentTime.textContent = formatTime(audioPlayer.currentTime);
+  }
+
+  function updateDuration() {
+    const duration = document.getElementById('duration');
+    // Update duration display
+    duration.textContent = formatTime(audioPlayer.duration);
+  }
+
+  function setProgress(event) {
+    const progressContainer = document.getElementById('progress-container');
+    const width = progressContainer.clientWidth;
+    const clickX = event.offsetX;
+    const duration = audioPlayer.duration;
+
+    audioPlayer.currentTime = (clickX / width) * duration;
+  }
+
+  function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  }
+</script>
+</body>
+</html>
