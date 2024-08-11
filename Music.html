@@ -69,7 +69,6 @@
       width: 100%;
       background: #444;
       border-radius: 5px;
-      cursor: pointer;
       position: relative;
     }
     #progress {
@@ -86,6 +85,11 @@
     #playlist {
       margin-top: 20px;
       text-align: left;
+      max-height: 200px; /* Set max height for scrollable area */
+      overflow-y: auto; /* Enable vertical scrolling */
+      background: #444; /* Background for playlist */
+      border-radius: 5px;
+      padding: 5px;
     }
     #playlist li {
       list-style: none;
@@ -96,6 +100,20 @@
     #playlist li:hover, #playlist li.active {
       background: #555;
     }
+    /* Custom scrollbar */
+    #playlist::-webkit-scrollbar {
+      width: 8px;
+    }
+    #playlist::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.7); /* White with slight transparency */
+      border-radius: 4px;
+    }
+    #playlist::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.9); /* Lighter on hover */
+    }
+    #playlist::-webkit-scrollbar-track {
+      background: #444; /* Background for track */
+    }
   </style>
 </head>
 <body>
@@ -103,7 +121,10 @@
     <label for="audio-input" id="upload-label">Upload MP3</label>
     <input type="file" accept="audio/*" id="audio-input" multiple onchange="loadAudioFiles()">
     <div class="title" id="audio-title">No file selected</div>
-    <div id="progress-container" onclick="setProgress(event)">
+    <div id="progress-container" 
+         onclick="setProgress(event)" 
+         onmousedown="startDragging(event)" 
+         onmouseup="stopDragging()">
       <div id="progress"></div>
     </div>
     <div class="time">
@@ -126,6 +147,7 @@
   let isPlaying = false;
   let currentTrackIndex = 0;
   let playlist = [];
+  let isDragging = false; // Track dragging state
 
   function loadAudioFiles() {
     const input = document.getElementById('audio-input');
@@ -143,6 +165,8 @@
     }
 
     if (playlist.length > 0) {
+      // Sort the playlist alphabetically by track name
+      playlist.sort((a, b) => a.name.localeCompare(b.name));
       updatePlaylistUI();
       const confirmation = prompt('Are you done adding songs? (yes/no)');
       if (confirmation !== null) {
@@ -244,13 +268,41 @@
     const duration = audioPlayer.duration;
 
     audioPlayer.currentTime = (clickX / width) * duration;
+    updateProgress();
+  }
+
+  function startDragging(event) {
+    isDragging = true;
+    updateProgressOnDrag(event);
+  }
+
+  function stopDragging() {
+    isDragging = false;
+  }
+
+  document.addEventListener('mousemove', (event) => {
+    if (isDragging) {
+      updateProgressOnDrag(event);
+    }
+  });
+
+  function updateProgressOnDrag(event) {
+    const progressContainer = document.getElementById('progress-container');
+    const width = progressContainer.clientWidth;
+    const clickX = event.clientX - progressContainer.getBoundingClientRect().left;
+    const duration = audioPlayer.duration;
+
+    if (clickX >= 0 && clickX <= width) {
+      audioPlayer.currentTime = (clickX / width) * duration;
+      updateProgress();
+    }
   }
 
   function formatTime(seconds) {
-    const mins = Math.floor(seconds / 60);
+    const minutes = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
   }
-</script>
+  </script>
 </body>
 </html>
